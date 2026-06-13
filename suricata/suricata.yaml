@@ -1,0 +1,45 @@
+%YAML 1.1
+---
+# Minimal Suricata configuration for the RT-IDRS lab setup.
+# Adjust HOME_NET / interface name to match your environment.
+
+vars:
+  address-groups:
+    HOME_NET: "[192.168.0.0/16,10.0.0.0/8,172.16.0.0/12]"
+    EXTERNAL_NET: "!$HOME_NET"
+
+default-log-dir: /var/log/suricata/
+
+outputs:
+  - eve-log:
+      enabled: yes
+      filetype: regular
+      filename: eve.json
+      types:
+        - alert:
+            payload: no
+            metadata: yes
+            tagged-packets: yes
+        - flow
+        - dns
+        - http
+
+default-rule-path: /etc/suricata/rules
+rule-files:
+  - local.rules
+
+af-packet:
+  - interface: eth0
+    cluster-id: 99
+    cluster-type: cluster_flow
+    defrag: yes
+
+logging:
+  default-log-level: notice
+  outputs:
+    - console:
+        enabled: yes
+    - file:
+        enabled: yes
+        level: info
+        filename: suricata.log

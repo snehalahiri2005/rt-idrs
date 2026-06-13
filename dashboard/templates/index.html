@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RT-IDRS — Operations Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0a0e14;
+    --panel: #10161f;
+    --panel-2: #141c27;
+    --border: #213040;
+    --text: #d7e1ea;
+    --muted: #6b7c8e;
+    --high: #ff5c5c;
+    --medium: #ffb454;
+    --low: #5cd6a6;
+    --brand: #5cd6a6;
+    --info: #5ca8ff;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    background-image:
+      linear-gradient(180deg, rgba(92,214,166,0.04), transparent 40%),
+      repeating-linear-gradient(0deg, rgba(255,255,255,0.012) 0px, rgba(255,255,255,0.012) 1px, transparent 1px, transparent 3px);
+    color: var(--text);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1320px;
+    margin: 0 auto;
+    padding: 1.5rem;
+  }
+
+  /* ---- Top bar ---- */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 1.5rem;
+  }
+  .brand {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+  }
+  .brand h1 {
+    font-family: var(--mono);
+    font-size: 1.35rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    margin: 0;
+    color: var(--text);
+  }
+  .brand span.tag {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0.15rem 0.6rem;
+    letter-spacing: 0.08em;
+  }
+  .status {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--muted);
+  }
+  .pulse-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--brand);
+    box-shadow: 0 0 0 0 rgba(92,214,166,0.6);
+    animation: pulse 1.8s infinite;
+  }
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(92,214,166,0.55); }
+    70%  { box-shadow: 0 0 0 8px rgba(92,214,166,0); }
+    100% { box-shadow: 0 0 0 0 rgba(92,214,166,0); }
+  }
+  .status .live-label { color: var(--brand); font-weight: 600; letter-spacing: 0.08em; }
+
+  /* ---- Stat cards ---- */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.9rem;
+    margin-bottom: 1.5rem;
+  }
+  .stat-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.1rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .stat-card .label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    margin-bottom: 0.4rem;
+  }
+  .stat-card .value {
+    font-family: var(--mono);
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .stat-card.accent-high .value { color: var(--high); }
+  .stat-card.accent-medium .value { color: var(--medium); }
+  .stat-card.accent-low .value { color: var(--low); }
+  .stat-card.accent-brand .value { color: var(--brand); }
+  .stat-card .bar {
+    position: absolute;
+    left: 0; bottom: 0; right: 0;
+    height: 3px;
+    background: var(--border);
+  }
+  .stat-card.accent-high .bar { background: var(--high); }
+  .stat-card.accent-medium .bar { background: var(--medium); }
+  .stat-card.accent-low .bar { background: var(--low); }
+  .stat-card.accent-brand .bar { background: var(--brand); }
+
+  /* ---- Panels / charts ---- */
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 0.9rem;
+    margin-bottom: 0.9rem;
+  }
+  .grid-2.reverse {
+    grid-template-columns: 1fr 1fr;
+  }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.1rem 0.6rem;
+  }
+  .panel h2 {
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--muted);
+    margin: 0 0 0.75rem 0;
+    font-weight: 600;
+  }
+  .chart-box { position: relative; height: 230px; }
+  .chart-box.small { height: 200px; }
+
+  /* ---- Top attackers list ---- */
+  .ip-list { list-style: none; margin: 0; padding: 0; }
+  .ip-list li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 0.85rem;
+  }
+  .ip-list li:last-child { border-bottom: none; }
+  .ip-list .count {
+    background: rgba(255,92,92,0.12);
+    color: var(--high);
+    border-radius: 999px;
+    padding: 0.1rem 0.6rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  /* ---- Incident log table ---- */
+  .log-panel { margin-top: 0.9rem; }
+  table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 0.82rem; }
+  thead th {
+    text-align: left;
+    padding: 0.5rem 0.6rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 0.68rem;
+    border-bottom: 1px solid var(--border);
+    font-weight: 600;
+  }
+  tbody td {
+    padding: 0.5rem 0.6rem;
+    border-bottom: 1px solid rgba(33,48,64,0.6);
+    white-space: nowrap;
+  }
+  tbody tr:hover { background: var(--panel-2); }
+  .pill {
+    display: inline-block;
+    padding: 0.12rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .pill.high   { background: rgba(255,92,92,0.14);  color: var(--high); }
+  .pill.medium { background: rgba(255,180,84,0.14); color: var(--medium); }
+  .pill.low    { background: rgba(92,214,166,0.14); color: var(--low); }
+
+  .pill.action-blocked { background: rgba(255,92,92,0.14); color: var(--high); }
+  .pill.action-logged,
+  .pill.action-already_blocked { background: rgba(107,124,142,0.16); color: var(--muted); }
+  .pill.action-block_failed { background: rgba(255,180,84,0.14); color: var(--medium); }
+
+  .empty-row td {
+    text-align: center;
+    color: var(--muted);
+    padding: 1.5rem;
+  }
+
+  footer {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 0.75rem;
+    font-family: var(--mono);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  @media (max-width: 1000px) {
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+    .grid-2, .grid-2.reverse { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div class="brand">
+      <h1>RT-IDRS // OPS CONSOLE</h1>
+      <span class="tag">REAL-TIME INTRUSION DETECTION &amp; RESPONSE</span>
+    </div>
+    <div class="status">
+      <span class="pulse-dot"></span>
+      <span class="live-label">LIVE</span>
+      <span id="last-updated">last update —</span>
+    </div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card accent-brand">
+      <div class="label">Total Incidents</div>
+      <div class="value" id="stat-total">{{ stats.total_incidents }}</div>
+      <div class="bar"></div>
+    </div>
+    <div class="stat-card accent-high">
+      <div class="label">IPs Blocked</div>
+      <div class="value" id="stat-blocked">{{ stats.blocked_total }}</div>
+      <div class="bar"></div>
+    </div>
+    <div class="stat-card accent-high">
+      <div class="label">High Severity</div>
+      <div class="value" id="stat-high">{{ stats.severity_counts.high }}</div>
+      <div class="bar"></div>
+    </div>
+    <div class="stat-card accent-medium">
+      <div class="label">Medium Severity</div>
+      <div class="value" id="stat-medium">{{ stats.severity_counts.medium }}</div>
+      <div class="bar"></div>
+    </div>
+    <div class="stat-card accent-low">
+      <div class="label">Low Severity</div>
+      <div class="value" id="stat-low">{{ stats.severity_counts.low }}</div>
+      <div class="bar"></div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="panel">
+      <h2>Incidents Over Time</h2>
+      <div class="chart-box"><canvas id="chart-timeline"></canvas></div>
+    </div>
+    <div class="panel">
+      <h2>Severity Breakdown</h2>
+      <div class="chart-box"><canvas id="chart-severity"></canvas></div>
+    </div>
+  </div>
+
+  <div class="grid-2 reverse">
+    <div class="panel">
+      <h2>Top Source IPs</h2>
+      <ul class="ip-list" id="ip-list">
+        {% for ip, count in stats.top_src_ips %}
+        <li><span>{{ ip }}</span><span class="count">{{ count }}</span></li>
+        {% else %}
+        <li><span>No data yet</span></li>
+        {% endfor %}
+      </ul>
+    </div>
+    <div class="panel">
+      <h2>Response Actions</h2>
+      <div class="chart-box small"><canvas id="chart-actions"></canvas></div>
+    </div>
+  </div>
+
+  <div class="panel log-panel">
+    <h2>Live Incident Log</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Time (UTC)</th>
+          <th>Source IP</th>
+          <th>Destination</th>
+          <th>Signature</th>
+          <th>Severity</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="incident-rows">
+        {% for inc in incidents %}
+        <tr>
+          <td>{{ inc.received_at }}</td>
+          <td>{{ inc.src_ip }}</td>
+          <td>{{ inc.dest_ip }}</td>
+          <td>{{ inc.signature }}</td>
+          <td><span class="pill {{ inc.severity }}">{{ inc.severity }}</span></td>
+          <td><span class="pill action-{{ inc.action }}">{{ inc.action }}</span></td>
+        </tr>
+        {% else %}
+        <tr class="empty-row"><td colspan="6">No incidents recorded yet — run the demo simulator to generate activity.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <footer>
+    <span>RT-IDRS · Suricata + Analyzer + Response Engine + Dashboard</span>
+    <span>Auto-refreshing every 5s</span>
+  </footer>
+
+</div>
+
+<script>
+const COLORS = {
+  high: '#ff5c5c',
+  medium: '#ffb454',
+  low: '#5cd6a6',
+  brand: '#5cd6a6',
+  info: '#5ca8ff',
+  muted: '#6b7c8e',
+  grid: 'rgba(33,48,64,0.6)'
+};
+
+Chart.defaults.font.family = "'IBM Plex Mono', monospace";
+Chart.defaults.color = COLORS.muted;
+
+const timelineCtx = document.getElementById('chart-timeline');
+const severityCtx = document.getElementById('chart-severity');
+const actionsCtx = document.getElementById('chart-actions');
+
+const timelineChart = new Chart(timelineCtx, {
+  type: 'line',
+  data: {
+    labels: {{ stats.timeline.labels | tojson }},
+    datasets: [{
+      label: 'Incidents',
+      data: {{ stats.timeline.counts | tojson }},
+      borderColor: COLORS.info,
+      backgroundColor: 'rgba(92,168,255,0.12)',
+      tension: 0.35,
+      fill: true,
+      pointRadius: 0,
+      borderWidth: 2
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: COLORS.grid }, ticks: { maxTicksLimit: 8 } },
+      y: { grid: { color: COLORS.grid }, beginAtZero: true, ticks: { precision: 0 } }
+    }
+  }
+});
+
+const severityChart = new Chart(severityCtx, {
+  type: 'doughnut',
+  data: {
+    labels: ['High', 'Medium', 'Low'],
+    datasets: [{
+      data: [
+        {{ stats.severity_counts.high }},
+        {{ stats.severity_counts.medium }},
+        {{ stats.severity_counts.low }}
+      ],
+      backgroundColor: [COLORS.high, COLORS.medium, COLORS.low],
+      borderColor: '#10161f',
+      borderWidth: 2
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: '65%',
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 14 } } }
+  }
+});
+
+const actionLabels = {{ stats.action_counts.keys() | list | tojson }};
+const actionValues = {{ stats.action_counts.values() | list | tojson }};
+
+const actionsChart = new Chart(actionsCtx, {
+  type: 'bar',
+  data: {
+    labels: actionLabels,
+    datasets: [{
+      label: 'Count',
+      data: actionValues,
+      backgroundColor: COLORS.brand,
+      borderRadius: 4,
+      maxBarThickness: 36
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    indexAxis: 'y',
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: COLORS.grid }, beginAtZero: true, ticks: { precision: 0 } },
+      y: { grid: { display: false } }
+    }
+  }
+});
+
+function severityPillClass(sev) {
+  return ['high','medium','low'].includes(sev) ? sev : 'low';
+}
+
+function refresh() {
+  fetch('/api/stats').then(r => r.json()).then(stats => {
+    document.getElementById('stat-total').textContent = stats.total_incidents;
+    document.getElementById('stat-blocked').textContent = stats.blocked_total;
+    document.getElementById('stat-high').textContent = stats.severity_counts.high;
+    document.getElementById('stat-medium').textContent = stats.severity_counts.medium;
+    document.getElementById('stat-low').textContent = stats.severity_counts.low;
+
+    timelineChart.data.labels = stats.timeline.labels;
+    timelineChart.data.datasets[0].data = stats.timeline.counts;
+    timelineChart.update();
+
+    severityChart.data.datasets[0].data = [
+      stats.severity_counts.high, stats.severity_counts.medium, stats.severity_counts.low
+    ];
+    severityChart.update();
+
+    const aLabels = Object.keys(stats.action_counts);
+    const aValues = Object.values(stats.action_counts);
+    actionsChart.data.labels = aLabels;
+    actionsChart.data.datasets[0].data = aValues;
+    actionsChart.update();
+
+    const ipList = document.getElementById('ip-list');
+    if (stats.top_src_ips.length === 0) {
+      ipList.innerHTML = '<li><span>No data yet</span></li>';
+    } else {
+      ipList.innerHTML = stats.top_src_ips.map(
+        ([ip, count]) => `<li><span>${ip}</span><span class="count">${count}</span></li>`
+      ).join('');
+    }
+
+    document.getElementById('last-updated').textContent =
+      'last update ' + new Date().toLocaleTimeString();
+  }).catch(() => {});
+
+  fetch('/api/incidents').then(r => r.json()).then(incidents => {
+    const rows = document.getElementById('incident-rows');
+    if (incidents.length === 0) {
+      rows.innerHTML = '<tr class="empty-row"><td colspan="6">No incidents recorded yet — run the demo simulator to generate activity.</td></tr>';
+      return;
+    }
+    rows.innerHTML = incidents.map(inc => `
+      <tr>
+        <td>${inc.received_at}</td>
+        <td>${inc.src_ip}</td>
+        <td>${inc.dest_ip}</td>
+        <td>${inc.signature}</td>
+        <td><span class="pill ${severityPillClass(inc.severity)}">${inc.severity}</span></td>
+        <td><span class="pill action-${inc.action}">${inc.action}</span></td>
+      </tr>
+    `).join('');
+  }).catch(() => {});
+}
+
+setInterval(refresh, 5000);
+</script>
+</body>
+</html>

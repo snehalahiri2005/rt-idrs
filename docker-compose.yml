@@ -1,0 +1,84 @@
+version: "3.9"
+
+services:
+  suricata:
+    build: ./suricata
+    image: ${DOCKERHUB_USER:-yourdockerhub}/rt-idrs-suricata:${IMAGE_TAG:-latest}
+    container_name: rt-idrs-suricata
+    network_mode: "host"          # needed to monitor host network interfaces
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+      - SYS_NICE
+    volumes:
+      - suricata-logs:/var/log/suricata
+    restart: unless-stopped
+
+  analyzer:
+    build: ./analyzer
+    image: ${DOCKERHUB_USER:-yourdockerhub}/rt-idrs-analyzer:${IMAGE_TAG:-latest}
+    container_name: rt-idrs-analyzer
+    depends_on:
+      - suricata
+      - response-engine
+    environment:
+      - EVE_LOG_PATH=/var/log/suricata/eve.json
+      - RESPONSE_ENGINE_URL=http://response-engine:5001/incident
+      - POLL_INTERVAL=1.0
+    volumes:
+      - suricata-logs:/var/log/suricata:ro
+    restart: unless-stopped
+    networks:
+      - idrs-net
+
+  response-engine:
+    build: ./response-engine
+    image: ${DOCKERHUB_USER:-yourdockerhub}/rt-idrs-response-engine:${IMAGE_TAG:-latest}
+    container_name: rt-idrs-response-engine
+    cap_add:
+      - NET_ADMIN
+    environment:
+      - PORT=5001
+      - DB_PATH=/data/incidents.db
+      - ENABLE_IPTABLES=true
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-}
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USE_TLS=${SMTP_USE_TLS:-true}
+      - SMTP_USERNAME=${SMTP_USERNAME:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - ALERT_EMAIL_FROM=${ALERT_EMAIL_FROM:-}
+      - ALERT_EMAIL_TO=${ALERT_EMAIL_TO:-}
+      - ALERT_EMAIL_MIN_SEVERITY=${ALERT_EMAIL_MIN_SEVERITY:-medium}
+    volumes:
+      - idrs-data:/data
+    ports:
+      - "5001:5001"
+    restart: unless-stopped
+    networks:
+      - idrs-net
+
+  dashboard:
+    build: ./dashboard
+    image: ${DOCKERHUB_USER:-yourdockerhub}/rt-idrs-dashboard:${IMAGE_TAG:-latest}
+    container_name: rt-idrs-dashboard
+    depends_on:
+      - response-engine
+    environment:
+      - PORT=5002
+      - DB_PATH=/data/incidents.db
+    volumes:
+      - idrs-data:/data
+    ports:
+      - "5002:5002"
+    restart: unless-stopped
+    networks:
+      - idrs-net
+
+networks:
+  idrs-net:
+    driver: bridge
+
+volumes:
+  suricata-logs:
+  idrs-data:
