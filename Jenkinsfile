@@ -1,7 +1,6 @@
 pipeline {
 agent any
 
-```
 environment {
     DOCKERHUB_USER = "yourdockerhub"
     IMAGE_TAG = "${BUILD_NUMBER}"
@@ -32,23 +31,7 @@ stages {
 
     stage('Push Images') {
         steps {
-            withCredentials([
-                usernamePassword(
-                    credentialsId: 'dockerhub-creds',
-                    usernameVariable: 'DOCKER_USER',
-                    passwordVariable: 'DOCKER_PASS'
-                )
-            ]) {
-
-                bat '''
-                echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin
-
-                docker push %DOCKERHUB_USER%/rt-idrs-suricata:%IMAGE_TAG%
-                docker push %DOCKERHUB_USER%/rt-idrs-analyzer:%IMAGE_TAG%
-                docker push %DOCKERHUB_USER%/rt-idrs-response-engine:%IMAGE_TAG%
-                docker push %DOCKERHUB_USER%/rt-idrs-dashboard:%IMAGE_TAG%
-                '''
-            }
+            echo 'Skipping DockerHub push for now'
         }
     }
 
@@ -70,11 +53,7 @@ post {
     failure {
         echo 'RT-IDRS Pipeline Failed'
     }
-
-    always {
-        bat 'docker image prune -f'
-    }
 }
-```
+
 
 }
