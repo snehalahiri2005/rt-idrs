@@ -160,6 +160,11 @@ def send_email_alert(incident: dict, action: str):
     Requires SMTP_HOST and ALERT_EMAIL_TO to be set; otherwise this is a
     no-op (useful for local/dev/testing where no mail server is configured).
     """
+    log.info(
+    "Email config loaded. SMTP_HOST=%s ALERT_EMAIL_TO=%s",
+    SMTP_HOST,
+    ALERT_EMAIL_TO,
+    )
     if not SMTP_HOST or not ALERT_EMAIL_TO:
         log.debug("Email alerting not configured, skipping email")
         return
@@ -212,6 +217,7 @@ def send_email_alert(incident: dict, action: str):
             server.login(SMTP_USERNAME, SMTP_PASSWORD)
 
         server.sendmail(ALERT_EMAIL_FROM, recipients, msg.as_string())
+        log.info("EMAIL SENT SUCCESSFULLY")
         server.quit()
         log.info("Sent email alert to %s for incident from %s", recipients, incident.get("src_ip"))
     except Exception as exc:  # noqa: BLE001 - log and continue, never block the response flow

@@ -65,7 +65,12 @@ def incident():
 
     # Notify (Slack + email), regardless of action, for visibility
     send_notification(data, action_taken)
-    send_email_alert(data, action_taken)
+    import threading
+
+    threading.Thread(
+        target=send_email_alert,
+        args=(data, action_taken)
+    ).start()
 
     log.info(
         "Incident processed: src=%s severity=%s sig=%s action=%s",
